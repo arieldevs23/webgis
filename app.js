@@ -44,7 +44,6 @@ function clearGeoJsonLayers() {
             },
             style: function (feature) {
                 const kondisi = (feature.properties.Keterangan || '').toLowerCase();
-
                 let warna;
                 switch (kondisi) {
                     case 'baik': warna = '#00cc44'; break;
@@ -53,22 +52,26 @@ function clearGeoJsonLayers() {
                     case 'rusak berat': warna = '#990000'; break;
                     default: warna = '#666666';
                 }
-
                 return { color: warna, weight: 3 };
             },
             onEachFeature: function (feature, layer) {
                 const props = feature.properties || {};
                 const popup = `
-                    <strong>${props.Nama_Jalan || '-'}</strong>
-                    <br>Jenis: ${props.Kondisi || '-'}
-                    <br>Kondisi: ${props.Keterangan || '-'}
-                    <br>Lebar m: ${props.Lebar_m_ || '-'}
-                    <br>Panjang m: ${props.Panjang_M || '-'}
-                    <br>Tahun: ${props.Tahun || props.tahun || '-'}
-                `;
+            <strong>${props.Nama_Jalan || '-'}</strong>
+            <br>Jenis: ${props.Kondisi || '-'}
+            <br>Kondisi: ${props.Keterangan || '-'}
+            <br>Lebar m: ${props.Lebar_m_ || '-'}
+            <br>Panjang m: ${props.Panjang_M || '-'}
+            <br>Tahun: ${props.Tahun || props.tahun || '-'}
+        `;
                 layer.bindPopup(popup);
             }
         }).addTo(map);
+
+        // 🔄 Tambahkan ini agar map otomatis geser ke data
+        map.fitBounds(layer.getBounds());
+        geojsonLayers.push(layer);
+
 
         geojsonLayers.push(layer);
     }).fail(function () {
@@ -130,7 +133,7 @@ function populateKecamatanDropdown(folder) {
             });
 
             // Setelah semua data dimuat, load layer-nya
-            loadAllGeoJson(folder, files);
+            (folder, files);
         });
     }).fail(function () {
         console.error('Gagal load isi folder:', folder);
@@ -142,8 +145,15 @@ function populateKecamatanDropdown(folder) {
 $('#dataSelect').on('change', function () {
     const folder = $(this).val();
     if (folder) {
+        $('#kecamatanSelect').prop("disabled", false)
+        $('#tahunSelect').prop("disabled", false)
+        $("#tools_jalan").show()
         console.log(folder)
         populateKecamatanDropdown(folder);
+        $.getJSON(`list_files.php?folder=${folder}`, function (files) {
+            loadAllGeoJson(folder, files); // semua kecamatan
+        });
+
     } else {
         $('#kecamatanSelect').empty().append('<option value="">-- Pilih Kecamatan --</option>');
         clearGeoJsonLayers();
@@ -156,12 +166,14 @@ $('#dataSelect').on('change', function () {
 $('#kecamatanSelect').on('change', function () {
     const folder = $('#dataSelect').val();
     const file = $(this).val();
+    const selectedTahun = $('#tahunSelect').val();
     clearGeoJsonLayers();
     if (file) {
-        loadGeoJsonFile(folder, file);
+        loadGeoJsonFile(folder, file, selectedTahun)
     } else {
-        // Kalau kosong, muat semua lagi
-        populateKecamatanDropdown(folder);
+        $.getJSON(`list_files.php?folder=${folder}`, function (files) {
+            loadAllGeoJson(folder, files); // semua kecamatan
+        });
     }
 });
 
@@ -181,5 +193,6 @@ $('#tahunSelect').on('change', function () {
 
 
 $(document).ready(function () {
+
     populateDataDropdown();
 });
